@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>말투 변환기</title>
+  <style>
+    body {
+      font-family: 'Helvetica Neue', sans-serif;
+      padding: 2rem;
+      max-width: 600px;
+      margin: auto;
+      background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+      color: #333;
+    }
+    h1 {
+      text-align: center;
+      color: #444;
+    }
+    textarea {
+      width: 100%;
+      height: 120px;
+      margin-bottom: 1rem;
+      padding: 0.8rem;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      font-size: 14px;
+      resize: none;
+      outline: none;
+      transition: border 0.3s;
+    }
+    textarea:focus {
+      border: 1px solid #7d5fff;
+      box-shadow: 0 0 6px rgba(125, 95, 255, 0.4);
+    }
+    label {
+      margin-right: 1rem;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    button {
+      display: inline-block;
+      margin: 1rem 0.5rem;
+      padding: 0.7rem 1.5rem;
+      font-size: 15px;
+      font-weight: bold;
+      border: none;
+      border-radius: 25px;
+      background: linear-gradient(135deg, #7d5fff, #5ca9fb);
+      color: #fff;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+    }
+    #result {
+      margin-top: 1rem;
+      background: #fff;
+      padding: 1.2rem;
+      border-radius: 12px;
+      min-height: 2em;
+      border: 1px solid #eee;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    #loading {
+      display: none;
+      margin-top: 1rem;
+      text-align: center;
+      font-style: italic;
+      color: #666;
+      font-size: 14px;
+    }
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #7d5fff;
+      border-radius: 50%;
+      width: 28px;
+      height: 28px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      margin-right: 8px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .buttons {
+      text-align: center;
+    }
+    #copyBtn, #twitterShareBtn, #instagramShareBtn {
+      display: none;
+    }
+    .toast-message {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 5px;
+      z-index: 1000;
+      opacity: 0;
+      transition: opacity 0.5s ease-in-out;
+    }
+  </style>
+</head>
+<body>
+  <h1>말투 변환기</h1>
+
+  <textarea id="userInput" placeholder="문장을 입력하세요..."></textarea>
+
+  <div>
+    <label><input type="radio" name="tone" value="귀엽고 애교 많은 말투" checked> 귀여운 말투</label>
+    <label><input type="radio" name="tone" value="공격적이고 거친 말투"> 공격적 말투</label>
+    <label><input type="radio" name="tone" value="정중하고 격식 있는 말투"> 정중한 말투</label>
+  </div>
+
+  <div class="buttons">
+    <button onclick="submit()">변환하기</button>
+    <button id="copyBtn" onclick="copyResult()">복사</button>
+    <button id="twitterShareBtn" onclick="shareToTwitter()">트위터로 공유</button>
+    <button id="instagramShareBtn" onclick="shareToInstagram()">인스타그램으로 공유</button>
+  </div>
+
+  <div id="loading"><span class="spinner"></span> 변환 중...</div>
+  <div id="result">결과가 여기에 표시됩니다</div>
+
+  <script>
+    function showToast(message) {
+      let toast = document.getElementById('toast');
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'toast';
+        toast.className = 'toast-message';
+        document.body.appendChild(toast);
+      }
+      toast.textContent = message;
+      toast.style.opacity = '1';
+
+      setTimeout(() => {
+        toast.style.opacity = '0';
+      }, 3000);
+    }
+
+    async function submit() {
+      const userInput = document.getElementById("userInput").value.trim();
+      if (!userInput) {
+        showToast("문장을 입력하세요.");
+        return;
+      }
+
+      const tone = document.querySelector('input[name="tone"]:checked').value;
+      const prompt = `다음 문장을 ${tone}로 바꿔줘: "${userInput}"`;
+
+      document.getElementById("loading").style.display = "block";
+      document.getElementById("result").textContent = "";
+      document.getElementById("copyBtn").style.display = "none";
+      document.getElementById("twitterShareBtn").style.display = "none";
+      document.getElementById("instagramShareBtn").style.display = "none";
+
+      try {
+        const res = await fetch("http://localhost:3000/api/convert", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ prompt: prompt })
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+          document.getElementById("result").textContent = data.choices[0].message.content;
+          document.getElementById("copyBtn").style.display = "inline-block";
+          document.getElementById("twitterShareBtn").style.display = "inline-block";
+          document.getElementById("instagramShareBtn").style.display = "inline-block";
+        } else {
+          document.getElementById("result").textContent = "오류: " + (data.error?.message || "알 수 없는 문제 발생");
+          showToast("변환에 실패했습니다: " + (data.error?.message || "알 수 없는 오류"));
+        }
+      } catch (err) {
+        document.getElementById("result").textContent = "네트워크 오류 발생: " + err.message;
+        showToast("네트워크 오류가 발생했습니다.");
+      } finally {
+        document.getElementById("loading").style.display = "none";
+      }
+    }
+
+    function copyResult() {
+      const resultText = document.getElementById("result").textContent;
+      if (!resultText) return;
+      navigator.clipboard.writeText(resultText).then(() => {
+        showToast("복사되었습니다!");
+      }).catch(err => {
+        showToast("복사 실패: " + err);
+      });
+    }
+
+    function shareToTwitter() {
+      const resultText = document.getElementById("result").textContent;
+      if (!resultText) {
+        showToast("공유할 내용이 없습니다.");
+        return;
+      }
+      const shareText = `말투 변환기 결과:\n"${resultText}"\n\n#말투변환기 #LLM`;
+      const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
+      window.open(twitterUrl, '_blank');
+    }
+
+    function shareToInstagram() {
+        const resultText = document.getElementById("result").textContent;
+        if (!resultText) {
+          showToast("공유할 내용이 없습니다.");
+          return;
+        }
+        navigator.clipboard.writeText(resultText).then(() => {
+          showToast("결과가 복사되었습니다! 인스타그램에서 붙여넣기하세요.");
+        }).catch(err => {
+          showToast("복사 실패: " + err);
+        });
+    }
+  </script>
+</body>
+</html>
