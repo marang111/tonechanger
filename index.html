@@ -162,7 +162,7 @@
       document.getElementById("instagramShareBtn").style.display = "none";
 
       try {
-        const res = await fetch("https://tonechanger-nu.vercel.app", {
+        const res = await fetch("https://tonechanger-nu.vercel.app/api/convert", {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
